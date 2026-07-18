@@ -1,0 +1,15 @@
+Public websites:
+
+karatemilo.com
+portfolio.karatemilo.com
+game.karatemilo.com
+grafana.karatemilo.com
+
+        |
+        v
+
+Raspberry Pi NGINX
+        |
+        +-- WordPress
+        +-- Grafana
+        +-- other Docker apps

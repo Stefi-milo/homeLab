@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network Topology — MikroTik · VLAN Segmented · WireGuard VPN</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg:         #080C18;
+    --bg-mid:     #0D1526;
+    --row-a:      #0D1526;
+    --row-b:      #0B1828;
+    --hdr-red:    #140A0A;
+    --hdr-orange: #150D04;
+    --hdr-blue:   #0A182F;
+    --hdr-purple: #120A1E;
+    --hdr-teal:   #03100F;
+    --hdr-office: #060F08;
+    --hdr-home:   #061509;
+    --hdr-poe:    #1A0F04;
+    --sub-hdr:    #060F1F;
+    --border-dim: rgba(30,60,100,0.5);
+    --border-red:   rgba(90,26,26,0.8);
+    --border-orange:rgba(74,48,16,0.8);
+    --border-blue:  rgba(20,60,120,0.8);
+    --border-purple:rgba(58,26,90,0.8);
+    --border-teal:  rgba(14,48,64,0.8);
+    --border-office:rgba(30,78,107,0.6);
+    --border-home:  rgba(28,93,40,0.6);
+    --border-poe:   rgba(130,80,10,0.6);
+
+    --c-blue:   #3A8FFF;
+    --c-white:  #E8EDF5;
+    --c-gray:   #8A95A8;
+    --c-yellow: #F7C942;
+    --c-green:  #1EE540;
+    --c-red:    #F95757;
+    --c-lblue:  #77B2FF;
+    --c-purple: #C084FC;
+    --c-dgray:  #4A5F80;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--c-white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 14px;
+    min-width: 1200px;
+  }
+
+  /* ── Title bar ────────────────────────────────────────────────────────── */
+  .title-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #060B16;
+    border: 1px solid var(--border-dim);
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .title-bar .bullet { display:inline-block; width:8px; height:8px; background:var(--c-blue); flex-shrink:0; }
+  .title-bar h1 { font-size: 13px; font-weight: 700; color: var(--c-blue); letter-spacing:.04em; }
+  .title-bar .sub { font-size: 10px; color: var(--c-gray); margin-left: 4px; }
+
+  /* ── Section wrapper ──────────────────────────────────────────────────── */
+  .section {
+    margin-bottom: 6px;
+    border: 1px solid var(--border-dim);
+  }
+  .section.red    { border-color: var(--border-red); }
+  .section.orange { border-color: var(--border-orange); }
+  .section.blue   { border-color: var(--border-blue); }
+  .section.purple { border-color: var(--border-purple); }
+  .section.teal   { border-color: var(--border-teal); }
+  .section.office { border-color: var(--border-office); }
+  .section.home   { border-color: var(--border-home); }
+  .section.poe    { border-color: var(--border-poe); }
+
+  /* ── Section header ───────────────────────────────────────────────────── */
+  .sec-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .sec-hdr.red    { background: var(--hdr-red); }
+  .sec-hdr.orange { background: var(--hdr-orange); }
+  .sec-hdr.blue   { background: var(--hdr-blue); }
+  .sec-hdr.purple { background: var(--hdr-purple); }
+  .sec-hdr.teal   { background: var(--hdr-teal); }
+  .sec-hdr.office { background: var(--hdr-office); }
+  .sec-hdr.home   { background: var(--hdr-home); }
+  .sec-hdr.poe    { background: var(--hdr-poe); }
+  .sec-hdr .bullet { display:inline-block; width:7px; height:7px; background:var(--c-blue); flex-shrink:0; }
+  .sec-hdr .label { color: var(--c-blue); }
+  .sec-hdr .subtitle { color: var(--c-gray); font-weight: 400; font-size: 10px; margin-left: 2px;}
+  .sec-hdr .ip-badge {
+    margin-left: auto;
+    background: rgba(30,229,64,0.12);
+    border: 1px solid rgba(30,229,64,0.3);
+    color: var(--c-green);
+    font-size: 10px;
+    padding: 2px 8px;
+    font-weight: 700;
+  }
+
+  /* ── Table ────────────────────────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--sub-hdr); }
+  thead th {
+    text-align: left;
+    padding: 4px 6px;
+    font-size: 9.5px;
+    color: var(--c-gray);
+    font-weight: 600;
+    letter-spacing: .05em;
+    border-bottom: 1px solid var(--border-dim);
+    text-transform: uppercase;
+  }
+  tbody tr:nth-child(odd)  { background: var(--row-a); }
+  tbody tr:nth-child(even) { background: var(--row-b); }
+  tbody td {
+    padding: 4px 6px;
+    font-size: 10.5px;
+    border-bottom: 1px solid rgba(20,50,90,0.35);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: rgba(30,80,160,0.15); }
+
+  /* ── Status badges ────────────────────────────────────────────────────── */
+  .up   { color: var(--c-green); font-weight: 700; }
+  .down { color: var(--c-red);   font-weight: 700; }
+  .idle { color: var(--c-gray); }
+  .slave{ color: var(--c-gray); }
+  .port   { color: var(--c-yellow); font-weight: 600; }
+  .ip     { color: var(--c-lblue); }
+  .vlan   { color: var(--c-lblue); font-weight: 500; }
+  .muted  { color: var(--c-gray); }
+  .bold-w { color: var(--c-white); font-weight: 600; }
+
+  /* ── Note row ─────────────────────────────────────────────────────────── */
+  .note-row {
+    padding: 4px 10px;
+    font-size: 9.5px;
+    color: var(--c-gray);
+    border-top: 1px solid var(--border-dim);
+    background: var(--bg-mid);
+  }
+  .note-row span { color: var(--c-blue); }
+
+  /* ── Logical interfaces separator ────────────────────────────────────── */
+  .logical-sep {
+    background: var(--row-a);
+    text-align: center;
+    padding: 5px;
+    font-size: 10px;
+    color: var(--c-blue);
+    font-weight: 700;
+    border-top: 1px solid var(--border-dim);
+    border-bottom: 1px solid var(--border-dim);
+    letter-spacing: .1em;
+  }
+
+  /* ── Arrow connector ──────────────────────────────────────────────────── */
+  .arrow-connector {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 18px;
+    gap: 8px;
+    font-size: 9px;
+    color: var(--c-dgray);
+  }
+  .arrow-connector .line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--c-blue), transparent);
+    max-width: 180px;
+  }
+  .arrow-connector .arrow-down {
+    font-size: 14px;
+    color: var(--c-blue);
+    line-height: 1;
+    animation: pulse-arrow 2s ease-in-out infinite;
+  }
+  .arrow-connector .arrow-purple { color: var(--c-purple); }
+  .arrow-connector .arrow-red    { color: var(--c-red); }
+
+  @keyframes pulse-arrow {
+    0%,100% { opacity: 0.6; transform: translateY(0); }
+    50%      { opacity: 1.0; transform: translateY(2px); }
+  }
+
+  /* ── Two/three column grid layouts ───────────────────────────────────── */
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+  /* Right panel (switch + mgmt + wg side by side) */
+  .router-row { display: grid; grid-template-columns: 3fr 2fr; gap: 6px; align-items: start; }
+  .switch-right { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* ── KV info box (MGMT / WireGuard) ─────────────────────────────────── */
+  .kv-table { width:100%; border-collapse:collapse; }
+  .kv-table tr:nth-child(odd)  { background: var(--row-a); }
+  .kv-table tr:nth-child(even) { background: var(--row-b); }
+  .kv-table td {
+    padding: 4px 7px;
+    font-size: 10px;
+    border-bottom: 1px solid rgba(20,50,90,0.35);
+    vertical-align: middle;
+  }
+  .kv-table .k { color: var(--c-gray); font-weight: 600; width: 68px; font-size: 9.5px; letter-spacing:.04em; }
+
+  /* ── VLAN device box ──────────────────────────────────────────────────── */
+  .device-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 7px;
+    background: rgba(20,60,100,0.25);
+    border-left: 2px solid var(--c-blue);
+    margin: 3px 8px;
+    font-size: 10px;
+  }
+  .device-card .d-bullet { width:6px; height:6px; background: var(--c-blue); flex-shrink:0; }
+  .device-card .d-name { color: var(--c-white); font-weight: 600; }
+  .device-card .d-ip   { color: var(--c-lblue); margin-left: auto; }
+  .device-card .d-port { color: var(--c-gray); font-size: 9px; }
+
+  .vlan-subnet {
+    padding: 5px 8px 6px;
+    font-size: 9.5px;
+    color: var(--c-gray);
+    display: flex;
+    gap: 16px;
+  }
+  .vlan-subnet span { color: var(--c-dgray); }
+
+  /* ── Footer ───────────────────────────────────────────────────────────── */
+  .footer {
+    text-align: center;
+    font-size: 9px;
+    color: var(--c-dgray);
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-dim);
+    letter-spacing: .05em;
+  }
+
+  /* ── Scan line overlay ────────────────────────────────────────────────── */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 9999;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── TITLE ──────────────────────────────────────────────────────────────── -->
+<div class="title-bar">
+  <span class="bullet"></span>
+  <h1>NETWORK TOPOLOGY</h1>
+  <span class="sub">Personal Network · MikroTik · VLAN Segmented · WireGuard VPN</span>
+</div>
+
+<!-- ── T-MOBILE GATEWAY ───────────────────────────────────────────────────── -->
+<div class="section red">
+  <div class="sec-hdr red">
+    <span class="bullet"></span>
+    <span class="label">T-MOBILE GATEWAY / TERMINATOR</span>
+    <span class="subtitle">ISP Terminator · Provided by T-Mobile</span>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:80px">PORT</th>
+      <th>ROLE</th>
+      <th style="width:160px">IP / NOTES</th>
+      <th style="width:180px">CONNECTED TO</th>
+      <th style="width:80px">STATUS</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="port">WAN</td>
+        <td>Internet uplink from T-Mobile</td>
+        <td class="ip">109.183.204.40</td>
+        <td class="muted">T-Mobile network</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="port">LAN</td>
+        <td>Output to Router ether1</td>
+        <td class="muted">Passes public IP to router</td>
+        <td class="muted">↓ Router ether1</td>
+        <td class="up">▲ UP</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note-row"><span>■■■</span> Terminator LAN → Router ether1 · public IP first hop</div>
+</div>
+
+<div class="arrow-connector">
+  <div class="line"></div>
+  <div class="arrow-down arrow-red">↓</div>
+  <div class="line"></div>
+</div>
+
+<!-- ── MODEM ─────────────────────────────────────────────────────────────── -->
+<div class="section orange">
+  <div class="sec-hdr orange">
+    <span class="bullet"></span>
+    <span class="label">MODEM</span>
+    <span class="subtitle">NAT/DHCP OFF · Bridge / Passthrough</span>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:80px">PORT</th>
+      <th>ROLE</th>
+      <th style="width:160px">IP / NOTES</th>
+      <th style="width:180px">CONNECTED TO</th>
+      <th style="width:80px">STATUS</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="port">WAN 1</td>
+        <td>Output → Router ether2</td>
+        <td class="muted">Modem LAN IP → Router ether2</td>
+        <td class="muted">↓ Router ether2</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr><td class="muted">LAN 1</td><td class="muted">—</td><td class="muted">—</td><td class="muted">free / empty</td><td class="down">▼ DOWN</td></tr>
+      <tr><td class="muted">LAN 2</td><td class="muted">—</td><td class="muted">—</td><td class="muted">free / empty</td><td class="down">▼ DOWN</td></tr>
+      <tr><td class="muted">LAN 3</td><td class="muted">—</td><td class="muted">—</td><td class="muted">free / empty</td><td class="down">▼ DOWN</td></tr>
+      <tr><td class="muted">LAN 4</td><td class="muted">—</td><td class="muted">—</td><td class="muted">free / empty</td><td class="down">▼ DOWN</td></tr>
+    </tbody>
+  </table>
+  <div class="note-row"><span>■■■</span> Modem WAN1 → Router ether2 · Modem LAN IP · no public IP</div>
+</div>
+
+<div class="arrow-connector">
+  <div class="line"></div>
+  <div class="arrow-down">↓</div>
+  <div class="line"></div>
+</div>
+
+<!-- ── MIKROTIK ROUTER ────────────────────────────────────────────────────── -->
+<div class="section blue">
+  <div class="sec-hdr blue">
+    <span class="bullet"></span>
+    <span class="label">MIKROTIK ROUTER</span>
+    <span class="subtitle">L3 · VLAN Routing · DHCP Server per VLAN · NAT · WireGuard VPN</span>
+    <span class="ip-badge">IP: 192.168.88.1</span>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:110px">PORT / IFACE</th>
+      <th style="width:200px">ROLE</th>
+      <th style="width:110px">VLAN(S)</th>
+      <th style="width:145px">IP / SUBNET</th>
+      <th style="width:145px">DHCP POOL /24</th>
+      <th>CONNECTED TO</th>
+      <th style="width:80px">STATUS</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="port">ether1</td>
+        <td>WAN uplink · connected to Terminator LAN</td>
+        <td class="muted">—</td>
+        <td class="muted">First hop via Terminator</td>
+        <td class="muted">—</td>
+        <td class="muted">↑ T-Mobile Terminator LAN</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="port">ether2</td>
+        <td>Modem link + trunk to switch</td>
+        <td class="vlan">V10 V100 V200</td>
+        <td class="muted">Modem LAN IP (no pub IP)</td>
+        <td class="muted">—</td>
+        <td class="muted">↑ Modem WAN1 &nbsp;↓ Switch sfp11</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="port">ether5</td>
+        <td>Management out</td>
+        <td class="vlan">V254</td>
+        <td class="ip">192.168.254.1/24</td>
+        <td class="muted">192.168.254.2–.254</td>
+        <td class="muted">↓ Management devices</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="muted">ether3</td>
+        <td class="muted">Slave / bridge-default</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+        <td class="muted">bridge member</td>
+        <td class="slave">■ slave</td>
+      </tr>
+      <tr>
+        <td class="muted">ether4</td>
+        <td class="muted">Slave / bridge-default</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+        <td class="muted">bridge member</td>
+        <td class="slave">■ slave</td>
+      </tr>
+      <tr>
+        <td class="muted">sfp1</td>
+        <td class="muted">Running · no IP assigned</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="logical-sep">■■■&nbsp;&nbsp;Logical Interfaces&nbsp;&nbsp;■■■</div>
+
+  <table>
+    <thead><tr>
+      <th style="width:110px">VLAN</th>
+      <th style="width:200px">ROLE</th>
+      <th style="width:110px">TAG</th>
+      <th style="width:145px">IP / SUBNET</th>
+      <th style="width:145px">DHCP POOL /24</th>
+      <th>CONNECTED TO</th>
+      <th style="width:80px">STATUS</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="port">VLAN 10</td>
+        <td>Home LAN gateway</td>
+        <td class="vlan">V10</td>
+        <td class="ip">192.168.10.1/24</td>
+        <td class="muted">192.168.10.2–.254</td>
+        <td class="muted">→ Home devices via switch</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="port">VLAN 100</td>
+        <td>Office LAN gateway</td>
+        <td class="vlan">V100</td>
+        <td class="ip">192.168.100.1/24</td>
+        <td class="muted">192.168.100.2–.254</td>
+        <td class="muted">→ Office devices via switch</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="port">VLAN 200</td>
+        <td>PoE / IoT gateway</td>
+        <td class="vlan">V200</td>
+        <td class="ip">192.168.200.1/24</td>
+        <td class="muted">192.168.200.2–.254</td>
+        <td class="muted">→ PoE devices via switch</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="port">VLAN 254</td>
+        <td>Management VLAN</td>
+        <td class="vlan">V254</td>
+        <td class="ip">192.168.254.1/24</td>
+        <td class="muted">192.168.254.2–.254</td>
+        <td class="muted">→ Mgmt via ether5</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="port">bridge</td>
+        <td>Default bridge</td>
+        <td class="vlan">V1</td>
+        <td class="ip">192.168.88.1/24</td>
+        <td class="muted">—</td>
+        <td class="muted">ether3, ether4</td>
+        <td class="up">▲ UP</td>
+      </tr>
+      <tr>
+        <td class="port">wg-vpn</td>
+        <td>WireGuard tunnel</td>
+        <td class="muted">—</td>
+        <td class="ip">192.168.220.1/24</td>
+        <td class="muted">—</td>
+        <td class="muted">→ Remote VPN peers</td>
+        <td class="up">▲ UP</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note-row">
+    Router ether2 → Switch sfp11 &nbsp;·&nbsp; Tagged VLAN 10·100·200 trunk &nbsp;&nbsp;|&nbsp;&nbsp;
+    Router ether5 → Mgmt &nbsp;·&nbsp; VLAN 254 · 192.168.254.x
+  </div>
+</div>
+
+<div class="arrow-connector">
+  <div class="line"></div>
+  <div class="arrow-down">↓</div>
+  <div class="line"></div>
+</div>
+
+<!-- ── SWITCH + MGMT + WIREGUARD ──────────────────────────────────────────── -->
+<div style="display:grid; grid-template-columns: 1fr auto auto; gap:6px; align-items:start; margin-bottom:6px;">
+
+  <!-- MIKROTIK SWITCH -->
+  <div class="section blue">
+    <div class="sec-hdr blue">
+      <span class="bullet"></span>
+      <span class="label">MIKROTIK SWITCH</span>
+      <span class="subtitle">L2 · bridge1 · VLAN Filtering ON</span>
+      <span class="ip-badge">IP: 192.168.88.2</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:70px">PORT</th>
+        <th style="width:160px">ROLE</th>
+        <th style="width:55px">PVID</th>
+        <th style="width:100px">TAGGED</th>
+        <th>DEVICE / CONNECTED TO</th>
+        <th style="width:70px">STATUS</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="port">sfp11</td>
+          <td>Trunk uplink</td>
+          <td class="muted">—</td>
+          <td class="vlan">V10 V100 V200</td>
+          <td class="muted">↑ Router ether2</td>
+          <td class="up">▲ UP</td>
+        </tr>
+        <tr>
+          <td class="port">ether1</td>
+          <td>Office · Raspberry Pi</td>
+          <td class="vlan">V100</td>
+          <td class="muted">—</td>
+          <td>■ <span class="ip">RPi · 192.168.100.253</span></td>
+          <td class="up">▲ UP</td>
+        </tr>
+        <tr>
+          <td class="port">ether2</td>
+          <td>Home · Synology NAS</td>
+          <td class="vlan">V10</td>
+          <td class="muted">—</td>
+          <td>■ <span class="ip">NAS · 192.168.10.10</span></td>
+          <td class="up">▲ UP</td>
+        </tr>
+        <tr>
+          <td class="port">ether3</td>
+          <td>Office · ESXi / Hyper-V</td>
+          <td class="vlan">V100</td>
+          <td class="muted">—</td>
+          <td>■ <span class="ip">ESXi/Hyper-V · 192.168.100.254</span></td>
+          <td class="up">▲ UP</td>
+        </tr>
+        <tr>
+          <td class="port">ether5</td>
+          <td>PoE · Zigbee GW</td>
+          <td class="vlan">V200</td>
+          <td class="muted">—</td>
+          <td>■ <span class="ip">Zigbee GW · 192.168.200.252</span></td>
+          <td class="up">▲ UP</td>
+        </tr>
+        <tr>
+          <td class="muted">ether4</td>
+          <td class="muted">PoE spare</td>
+          <td class="muted">V200</td>
+          <td class="muted">—</td>
+          <td class="muted">— unplugged</td>
+          <td class="idle">■ idle</td>
+        </tr>
+        <tr>
+          <td class="muted">ether8</td>
+          <td class="muted">Default / unassigned</td>
+          <td class="muted">V1</td>
+          <td class="muted">—</td>
+          <td class="muted">— unplugged</td>
+          <td class="idle">■ idle</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note-row">
+      SW ether1(RPi·100.253) · SW ether3(ESXi·100.254) · SW ether2(NAS·10.10) · SW ether5(Zigbee·200.252)
+    </div>
+  </div>
+
+  <!-- MGMT VLAN 254 -->
+  <div class="section purple" style="width:210px;">
+    <div class="sec-hdr purple">
+      <span class="bullet"></span>
+      <span class="label">MGMT VLAN 254</span>
+    </div>
+    <table class="kv-table">
+      <tr><td class="k">SUBNET</td><td class="ip">192.168.254.0/24</td></tr>
+      <tr><td class="k">GW</td>    <td class="ip">192.168.254.1</td></tr>
+      <tr><td class="k">ACCESS</td><td class="muted">Router ether5 (direct)</td></tr>
+      <tr><td class="k">VLAN</td>  <td class="muted">VLAN 254 · no switch hop</td></tr>
+    </table>
+  </div>
+
+  <!-- WIREGUARD VPN -->
+  <div class="section teal" style="width:230px;">
+    <div class="sec-hdr teal">
+      <span class="bullet"></span>
+      <span class="label">WIREGUARD VPN</span>
+      <span class="subtitle" style="font-size:9px">wg-vpn</span>
+    </div>
+    <table class="kv-table">
+      <tr><td class="k">IFACE</td> <td class="muted">wg-vpn</td></tr>
+      <tr><td class="k">SUBNET</td><td class="ip">192.168.220.0/24</td></tr>
+      <tr><td class="k">GW</td>    <td class="ip">192.168.220.1</td></tr>
+      <tr><td class="k">PEERS</td> <td class="muted">Remote → all VLANs via policy</td></tr>
+      <tr><td class="k">STATUS</td><td class="up">▲ UP</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<div class="arrow-connector">
+  <div class="line"></div>
+  <div class="arrow-down">↓</div>
+  <div class="line"></div>
+</div>
+
+<!-- ── VLAN DEVICE BOXES ──────────────────────────────────────────────────── -->
+<div class="cols-3">
+
+  <!-- OFFICE VLAN 100 -->
+  <div class="section office">
+    <div class="sec-hdr office">
+      <span class="bullet"></span>
+      <span class="label">OFFICE</span>
+      <span class="subtitle">VLAN 100</span>
+    </div>
+    <div class="device-card">
+      <div class="d-bullet"></div>
+      <div>
+        <div class="d-name">Raspberry Pi</div>
+        <div class="d-port">SW ether1 · PVID100</div>
+      </div>
+      <div class="d-ip">192.168.100.253</div>
+    </div>
+    <div class="device-card">
+      <div class="d-bullet"></div>
+      <div>
+        <div class="d-name">ESXi / Hyper-V</div>
+        <div class="d-port">SW ether3 · PVID100</div>
+      </div>
+      <div class="d-ip">192.168.100.254</div>
+    </div>
+    <div class="vlan-subnet">
+      <span>Subnet</span> 192.168.100.0/24 &nbsp; <span>GW</span> 192.168.100.1
+    </div>
+  </div>
+
+  <!-- HOME VLAN 10 -->
+  <div class="section home">
+    <div class="sec-hdr home">
+      <span class="bullet"></span>
+      <span class="label">HOME</span>
+      <span class="subtitle">VLAN 10</span>
+    </div>
+    <div class="device-card">
+      <div class="d-bullet"></div>
+      <div>
+        <div class="d-name">Synology NAS</div>
+        <div class="d-port">SW ether2 · PVID10</div>
+      </div>
+      <div class="d-ip">192.168.10.10</div>
+    </div>
+    <div class="vlan-subnet">
+      <span>Subnet</span> 192.168.10.0/24 &nbsp; <span>GW</span> 192.168.10.1
+    </div>
+  </div>
+
+  <!-- PoE/IoT VLAN 200 -->
+  <div class="section poe">
+    <div class="sec-hdr poe">
+      <span class="bullet"></span>
+      <span class="label">PoE / IoT</span>
+      <span class="subtitle">VLAN 200</span>
+    </div>
+    <div class="device-card">
+      <div class="d-bullet"></div>
+      <div>
+        <div class="d-name">Smart Zigbee GW</div>
+        <div class="d-port">SW ether5 · PVID200</div>
+      </div>
+      <div class="d-ip">192.168.200.252</div>
+    </div>
+    <div class="vlan-subnet">
+      <span>Subnet</span> 192.168.200.0/24 &nbsp; <span>GW</span> 192.168.200.1
+    </div>
+  </div>
+
+</div>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+<div class="footer">
+  MikroTik Network &nbsp;·&nbsp; Personal Network &nbsp;·&nbsp; Auto-generated Topology Map
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  Router IP: 192.168.88.1 &nbsp;·&nbsp; Switch IP: 192.168.88.2
+</div>
+
+</body>
+</html>

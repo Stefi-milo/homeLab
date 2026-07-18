@@ -1,0 +1,47 @@
+              COLLECTORS              STORAGE             VISUALIZATION
+
+Kubernetes
+Worker 1  ─┐
+Worker 2  ─┼──> Grafana Alloy ───┐
+Worker 3  ─┘                     │
+                                 ▼
+Raspberry Pi ───> Alloy ───────> Loki (NUC VM)
+                                 │
+Proxmox ───────> Alloy ──────────┘
+                                 │
+                                 ▼
+                         Grafana (Raspberry Pi)
+
+
+
+                 Loki VM
+                (NUC)
+                   ▲
+                   |
+        ┌──────────┼──────────┐
+        |          |          |
+     Alloy      Alloy      Alloy
+ Kubernetes   Raspberry   Proxmox
+
+
+
+              Grafana
+            Raspberry Pi
+                 |
+          ┌──────┴──────┐
+          |             |
+     Prometheus       Loki
+     (metrics)       (logs)
+
+
+
+Source
+  |
+  |
+Alloy (collector)
+  |
+  |
+Loki (storage/search)
+  |
+  |
+Grafana (dashboard)

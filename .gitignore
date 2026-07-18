@@ -1,0 +1,26 @@
+# =========================
+# OBSIDIAN
+# =========================
+
+.obsidian/
+notes/.obsidian/
+
+
+# =========================
+# DEVICE DATA
+# =========================
+
+# Ignore secrets/backups
+*.rsc
+*.backup
+*.wg
+*.key
+
+Backup/
+
+
+# =========================
+# SECURITY / TOOLS
+# =========================
+
+.cache_ggshield

@@ -1,0 +1,19 @@
+# Update arcade to new version and redeploy the image
+
+cd ~/HomeLab/projects/arcade
+sed -i 's/home-arcade:2.9/home-arcade:3.0/' rebuildArcade.sh
+./rebuildArcade.sh
+
+# Run or Raspberry PI
+
+cd ~/Docker
+sed -i 's/home-arcade:2.9/home-arcade:3.0/' docker-compose.yml
+docker compose up -d home-arcade
+
+# ./rebuildArcade.sh
+
+sudo docker buildx build \
+  --platform linux/arm64 \
+  -t ghcr.io/stefi-milo/home-arcade:3.0 \
+  --push .
+

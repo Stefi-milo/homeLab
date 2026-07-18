@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network Application Topology</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap');
+
+  :root {
+    --bg: #070B14;
+    --surface: #0D1421;
+    --surface2: #111927;
+    --border: rgba(255,255,255,0.07);
+    --border-glow: rgba(99,179,237,0.25);
+    --text: #CBD5E1;
+    --muted: #475569;
+    --accent: #63B3ED;
+    --accent2: #68D391;
+    --accent3: #F6AD55;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --icon-size: 96px;
+    --icon-img: 58px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: var(--mono);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(99,179,237,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,179,237,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Ambient glow blobs */
+  .ambient {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.18;
+  }
+  .a1 { width: 600px; height: 600px; background: #2563EB; top: -100px; left: -100px; }
+  .a2 { width: 500px; height: 500px; background: #7C3AED; bottom: 0; right: -100px; }
+  .a3 { width: 400px; height: 400px; background: #059669; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+  /* ── Layout ── */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 48px 32px 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+  header .tag {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(99,179,237,0.3);
+    padding: 4px 14px;
+    border-radius: 100px;
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-family: var(--display);
+    font-size: clamp(24px, 3.5vw, 42px);
+    font-weight: 800;
+    color: #F1F5F9;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  header p {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Flow spine ── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* ── Connector ── */
+  .connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 6px 0;
+  }
+  .connector-line {
+    width: 2px;
+    height: 36px;
+    background: linear-gradient(to bottom, rgba(99,179,237,0.5), rgba(99,179,237,0.15));
+  }
+  .connector-line.dashed {
+    background: none;
+    border-left: 2px dashed rgba(99,179,237,0.35);
+  }
+  .connector-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    flex-shrink: 0;
+  }
+  .connector-label {
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: rgba(99,179,237,0.08);
+    border: 1px solid rgba(99,179,237,0.2);
+    padding: 2px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+    margin: 4px 0;
+  }
+
+  /* ── Device block ── */
+  .device-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 1320px;
+  }
+
+  /* ── Device card ── */
+  .device-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    position: relative;
+    transition: border-color 0.2s;
+    width: fit-content;
+    min-width: 340px;
+  }
+  .device-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 21px;
+    background: transparent;
+    border: 1px solid transparent;
+    pointer-events: none;
+  }
+
+  /* Color variants */
+  .dc-blue  { border-color: rgba(99,179,237,0.35); box-shadow: 0 0 32px rgba(99,179,237,0.08), inset 0 1px 0 rgba(99,179,237,0.1); }
+  .dc-cyan  { border-color: rgba(104,211,145,0.35); box-shadow: 0 0 32px rgba(104,211,145,0.08), inset 0 1px 0 rgba(104,211,145,0.1); }
+  .dc-red   { border-color: rgba(252,129,74,0.35);  box-shadow: 0 0 32px rgba(252,129,74,0.08),  inset 0 1px 0 rgba(252,129,74,0.1); }
+  .dc-purple{ border-color: rgba(167,139,250,0.35); box-shadow: 0 0 32px rgba(167,139,250,0.08), inset 0 1px 0 rgba(167,139,250,0.1); }
+  .dc-teal  { border-color: rgba(45,212,191,0.35);  box-shadow: 0 0 32px rgba(45,212,191,0.08),  inset 0 1px 0 rgba(45,212,191,0.1); }
+  .dc-amber { border-color: rgba(251,191,36,0.35);  box-shadow: 0 0 32px rgba(251,191,36,0.08),  inset 0 1px 0 rgba(251,191,36,0.1); }
+  .dc-orange{ border-color: rgba(251,146,60,0.35);  box-shadow: 0 0 32px rgba(251,146,60,0.08),  inset 0 1px 0 rgba(251,146,60,0.1); }
+
+  .device-icon-wrap {
+    position: relative;
+    width: 56px; height: 56px;
+    flex-shrink: 0;
+  }
+  .device-icon-wrap img,
+  .device-icon-wrap svg {
+    width: 56px; height: 56px;
+    object-fit: contain;
+    border-radius: 14px;
+  }
+  .status-dot {
+    position: absolute;
+    top: -3px; right: -3px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent2);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .device-meta { display: flex; flex-direction: column; gap: 4px; }
+  .device-name {
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 700;
+    color: #F1F5F9;
+    letter-spacing: -0.01em;
+  }
+  .device-ip {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .device-vlan {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 10px;
+    border-radius: 100px;
+    width: fit-content;
+    margin-top: 2px;
+  }
+
+  /* ── Icon grid ──
+     Uses CSS Grid with auto-fill columns of fixed var(--icon-size).
+     Guarantees equal spacing, no overlap, wraps cleanly.
+  */
+  .icon-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    padding: 20px 12px 4px;
+    max-width: 1100px;
+  }
+
+  /* Single app icon badge */
+  .app-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    width: var(--icon-size);
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+    animation: float 4s ease-in-out infinite;
+  }
+  .app-icon:nth-child(1)  { animation-delay: 0.0s; }
+  .app-icon:nth-child(2)  { animation-delay: 0.3s; }
+  .app-icon:nth-child(3)  { animation-delay: 0.6s; }
+  .app-icon:nth-child(4)  { animation-delay: 0.9s; }
+  .app-icon:nth-child(5)  { animation-delay: 1.2s; }
+  .app-icon:nth-child(6)  { animation-delay: 1.5s; }
+  .app-icon:nth-child(7)  { animation-delay: 1.8s; }
+  .app-icon:nth-child(8)  { animation-delay: 2.1s; }
+  .app-icon:nth-child(9)  { animation-delay: 2.4s; }
+  .app-icon:nth-child(10) { animation-delay: 2.7s; }
+  .app-icon:nth-child(11) { animation-delay: 3.0s; }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0px); }
+    50%      { transform: translateY(-7px); }
+  }
+
+  .app-icon:hover { animation-play-state: paused; }
+
+  .icon-box {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    border-radius: 22px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s;
+    position: relative;
+    overflow: hidden;
+  }
+  .icon-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .app-icon:hover .icon-box {
+    transform: scale(1.1) translateY(-4px);
+    box-shadow: 0 20px 48px rgba(0,0,0,0.6);
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  .icon-box img {
+    width: var(--icon-img);
+    height: var(--icon-img);
+    object-fit: contain;
+    display: block;
+    image-rendering: -webkit-optimize-contrast;
+  }
+
+  /* Emoji fallback */
+  .icon-box .icon-emoji {
+    font-size: 48px;
+    line-height: 1;
+  }
+
+  .icon-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.03em;
+    line-height: 1.3;
+    transition: color 0.15s;
+    max-width: var(--icon-size);
+  }
+  .app-icon:hover .icon-label { color: var(--text); }
+
+  /* Tooltip */
+  .app-icon::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1E293B;
+    border: 1px solid rgba(99,179,237,0.3);
+    color: var(--accent);
+    font-size: 9px;
+    white-space: nowrap;
+    padding: 4px 10px;
+    border-radius: 8px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+    letter-spacing: 0.05em;
+  }
+  .app-icon:hover::after { opacity: 1; }
+
+  /* ── 3-col end devices ── */
+  .end-devices {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    width: 100%;
+    max-width: 1320px;
+    align-items: start;
+  }
+  .end-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* ── Branch connector ── */
+  .branch-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: 1320px;
+    position: relative;
+    padding: 0;
+    height: 56px;
+  }
+  .branch-line-h {
+    position: absolute;
+    top: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, rgba(99,179,237,0.35), transparent);
+  }
+  .branch-line-v {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, rgba(99,179,237,0.35), rgba(99,179,237,0.1));
+  }
+  .branch-dot {
+    position: absolute;
+    top: -4px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    transform: translateX(-50%);
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    margin-top: 64px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient a1"></div>
+<div class="ambient a2"></div>
+<div class="ambient a3"></div>
+
+<div class="page">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="tag">Network Topology</div>
+    <h1>Application Infrastructure Map</h1>
+    <p>MikroTik Network · VLAN Segmented · WireGuard VPN · Real-time status</p>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       FLOW: Internet → Router → Switch → [End Devices] → Zigbee
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="flow">
+
+    <!-- ─── T-Mobile Internet ─────────────────────────────────────────── -->
+    <div class="device-block">
+      <div class="device-card dc-red">
+        <div class="device-icon-wrap">
+          <div class="status-dot"></div>
+          <!-- Globe SVG -->
+          <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="56" height="56" rx="14" fill="#1a0a1e"/>
+            <circle cx="28" cy="28" r="16" stroke="#E8005C" stroke-width="2"/>
+            <ellipse cx="28" cy="28" rx="7" ry="16" stroke="#E8005C" stroke-width="1.5"/>
+            <line x1="12" y1="28" x2="44" y2="28" stroke="#E8005C" stroke-width="1.5"/>
+            <line x1="13" y1="22" x2="43" y2="22" stroke="#E8005C" stroke-width="1.2"/>
+            <line x1="13" y1="34" x2="43" y2="34" stroke="#E8005C" stroke-width="1.2"/>
+          </svg>
+        </div>
+        <div class="device-meta">
+          <div class="device-name">T-Mobile Internet</div>
+          <div class="device-ip">109.183.204.40 · ISP Uplink</div>
+          <span class="device-vlan" style="background:rgba(232,0,92,0.1);color:#E8005C;border:1px solid rgba(232,0,92,0.25)">🌐 WAN</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connector -->
+    <div class="connector">
+      <div class="connector-line"></div>
+      <div class="connector-dot"></div>
+      <div class="connector-line"></div>
+    </div>
+
+    <!-- ─── MikroTik Router ─────────────────────────────────────────────── -->
+    <div class="device-block">
+      <div class="device-card dc-blue">
+        <div class="device-icon-wrap">
+          <div class="status-dot"></div>
+          <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="56" height="56" rx="14" fill="#060e22"/>
+            <rect x="8" y="20" width="40" height="16" rx="4" stroke="#63B3ED" stroke-width="1.8"/>
+            <circle cx="16" cy="28" r="2.5" fill="#68D391"/>
+            <circle cx="23" cy="28" r="2.5" fill="#63B3ED"/>
+            <circle cx="30" cy="28" r="2.5" fill="#63B3ED"/>
+            <circle cx="37" cy="28" r="2.5" fill="#F6AD55"/>
+            <line x1="16" y1="20" x2="16" y2="14" stroke="#63B3ED" stroke-width="1.5"/>
+            <line x1="23" y1="20" x2="23" y2="12" stroke="#63B3ED" stroke-width="1.8"/>
+            <line x1="30" y1="20" x2="30" y2="14" stroke="#63B3ED" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="device-meta">
+          <div class="device-name">MikroTik Router</div>
+          <div class="device-ip">192.168.88.1 · L3 · NAT Gateway</div>
+          <span class="device-vlan" style="background:rgba(99,179,237,0.1);color:#63B3ED;border:1px solid rgba(99,179,237,0.25)">V10 · V100 · V200 · V254</span>
+        </div>
+      </div>
+
+      <!-- Router app icons: 4 apps in 1 row -->
+      <div class="icon-grid">
+
+        <div class="app-icon" data-tip="WireGuard VPN · Tunnel">
+          <div class="icon-box">
+            <img src="https://cdn.simpleicons.org/wireguard/88379F"
+                 alt="WireGuard"
+                 onerror="this.style.display='none'; this.parentNode.innerHTML='<span class=icon-emoji>🔒</span>'">
+          </div>
+          <span class="icon-label">WireGuard</span>
+        </div>
+
+        <div class="app-icon" data-tip="Firewall · Packet Filter">
+          <div class="icon-box">
+            <img src="https://cdn.simpleicons.org/iptables/FF1744"
+                 alt="Firewall"
+                 onerror="this.style.display='none'; this.parentNode.innerHTML='<span class=icon-emoji>🛡️</span>'">
+          </div>
+          <span class="icon-label">Firewall</span>
+        </div>
+
+        <div class="app-icon" data-tip="VLAN Routing · L3 Switch">
+          <div class="icon-box">
+            <!-- MikroTik-colored router/VLAN icon -->
+            <img src="https://cdn.simpleicons.org/cisco/1BA0D7"
+                 alt="VLAN Routing"
+                 onerror="this.style.display='none'; this.parentNode.innerHTML='<span class=icon-emoji>🔀</span>'">
+          </div>
+          <span class="icon-label">VLAN Routing</span>
+        </div>
+
+        <div class="app-icon" data-tip="DHCP Server · IP Assignment">
+          <div class="icon-box">
+            <img src="https://cdn.simpleicons.org/isc/003087"
+                 alt="DHCP"
+                 onerror="this.parentNode.innerHTML='<span class=icon-emoji>📋</span>'">
+          </div>
+          <span class="icon-label">DHCP</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Connector dashed = trunk -->
+    <div class="connector">
+      <div class="connector-line dashed"></div>
+      <div class="connector-label">TRUNK · V10 · V100 · V200</div>
+      <div class="connector-dot"></div>
+      <div class="connector-line dashed"></div>
+    </div>
+
+    <!-- ─── MikroTik Switch ─────────────────────────────────────────────── -->
+    <div class="device-block">
+      <div class="device-card dc-cyan">
+        <div class="device-icon-wrap">
+          <div class="status-dot"></div>
+          <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="56" height="56" rx="14" fill="#061510"/>
+            <rect x="4" y="19" width="48" height="18" rx="4" stroke="#68D391" stroke-width="1.8"/>
+            <circle cx="12" cy="28" r="2" fill="#68D391"/>
+            <circle cx="19" cy="28" r="2" fill="#68D391"/>
+            <circle cx="26" cy="28" r="2" fill="#68D391"/>
+            <circle cx="33" cy="28" r="2" fill="#68D391"/>
+            <circle cx="40" cy="28" r="2" fill="#68D391"/>
+            <circle cx="47" cy="28" r="2" fill="#F6AD55"/>
+            <line x1="12" y1="19" x2="12" y2="13" stroke="#68D391" stroke-width="1.3"/>
+            <line x1="19" y1="19" x2="19" y2="13" stroke="#68D391" stroke-width="1.3"/>
+            <line x1="26" y1="19" x2="26" y2="13" stroke="#68D391" stroke-width="1.3"/>
+            <line x1="33" y1="19" x2="33" y2="13" stroke="#68D391" stroke-width="1.3"/>
+            <line x1="40" y1="19" x2="40" y2="13" stroke="#68D391" stroke-width="1.3"/>
+          </svg>
+        </div>
+        <div class="device-meta">
+          <div class="device-name">MikroTik Switch</div>
+          <div class="device-ip">192.168.88.2 · L2 · bridge1 · sfp11 TRUNK</div>
+          <span class="device-vlan" style="background:rgba(104,211,145,0.1);color:#68D391;border:1px solid rgba(104,211,145,0.25)">VLAN Filter ON</span>
+        </div>
+      </div>
+
+      <!-- Switch app icons: 2 apps -->
+      <div class="icon-grid">
+
+        <div class="app-icon" data-tip="VLAN Filtering · 802.1Q">
+          <div class="icon-box">
+            <svg viewBox="0 0 58 58" fill="none" width="58" height="58">
+              <rect width="58" height="58" rx="12" fill="#001525"/>
+              <path d="M6 16 L44 16 L52 29 L44 42 L6 42 L14 29 Z" fill="none" stroke="#68D391" stroke-width="2.5" stroke-linejoin="round"/>
+              <circle cx="14" cy="29" r="4" fill="#68D391"/>
+              <text x="24" y="34" font-family="monospace" font-size="13" fill="#68D391" font-weight="bold">VLAN</text>
+            </svg>
+          </div>
+          <span class="icon-label">VLAN Filter</span>
+        </div>
+
+        <div class="app-icon" data-tip="bridge1 · L2 Forwarding">
+          <div class="icon-box">
+            <svg viewBox="0 0 58 58" fill="none" width="58" height="58">
+              <rect width="58" height="58" rx="12" fill="#001030"/>
+              <path d="M5 44 Q29 14 53 44" stroke="#63B3ED" stroke-width="3.5" fill="none"/>
+              <line x1="5" y1="44" x2="5" y2="53" stroke="#63B3ED" stroke-width="3.5"/>
+              <line x1="53" y1="44" x2="53" y2="53" stroke="#63B3ED" stroke-width="3.5"/>
+              <line x1="29" y1="24" x2="29" y2="53" stroke="#63B3ED" stroke-width="3" stroke-dasharray="5 3"/>
+              <circle cx="29" cy="20" r="4" fill="#63B3ED"/>
+            </svg>
+          </div>
+          <span class="icon-label">bridge1</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Branch connectors to 3 end devices -->
+    <div class="connector" style="height:50px">
+      <div class="connector-line" style="height:50px"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         END DEVICES — 3-col grid
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="end-devices">
+
+      <!-- ─── RASPBERRY PI ─────────────────────────────────────────────── -->
+      <div class="end-col">
+        <div class="device-card dc-purple" style="width:100%">
+          <div class="device-icon-wrap">
+            <div class="status-dot"></div>
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/raspberrypi/raspberrypi-original.svg"
+                 width="56" height="56" style="border-radius:14px"
+                 alt="Raspberry Pi"
+                 onerror="this.outerHTML='<span style=font-size:44px>🫐</span>'">
+          </div>
+          <div class="device-meta">
+            <div class="device-name">Raspberry Pi</div>
+            <div class="device-ip">192.168.100.253</div>
+            <span class="device-vlan" style="background:rgba(167,139,250,0.1);color:#A78BFA;border:1px solid rgba(167,139,250,0.25)">VLAN 100 · Office</span>
+          </div>
+        </div>
+
+        <!-- 10 apps: 5 per row = 2 clean rows -->
+        <div class="icon-grid" style="max-width:580px">
+
+          <div class="app-icon" data-tip="Pi-hole · DNS Sinkhole">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/pi-hole.png" alt="Pi-hole"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🕳️</span>'">
+            </div>
+            <span class="icon-label">Pi-hole</span>
+          </div>
+
+          <div class="app-icon" data-tip="MariaDB · SQL Database">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/mariadb/C0765A" alt="MariaDB"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🐬</span>'">
+            </div>
+            <span class="icon-label">MariaDB</span>
+          </div>
+
+          <div class="app-icon" data-tip="WordPress · CMS">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/wordpress/21759B" alt="WordPress"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>📝</span>'">
+            </div>
+            <span class="icon-label">WordPress</span>
+          </div>
+
+          <div class="app-icon" data-tip="Docker · Container Engine">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/docker/2496ED" alt="Docker"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🐳</span>'">
+            </div>
+            <span class="icon-label">Docker</span>
+          </div>
+
+          <div class="app-icon" data-tip="Docker Compose · Multi-container">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/dockercompose/dockercompose-original.svg" alt="Compose"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>📦</span>'">
+            </div>
+            <span class="icon-label">Compose</span>
+          </div>
+
+          <div class="app-icon" data-tip="Grafana · Dashboards">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/grafana/grafana-original.svg" alt="Grafana"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>📊</span>'">
+            </div>
+            <span class="icon-label">Grafana</span>
+          </div>
+
+          <div class="app-icon" data-tip="Prometheus · Metrics">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/prometheus/E6522C" alt="Prometheus"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🔥</span>'">
+            </div>
+            <span class="icon-label">Prometheus</span>
+          </div>
+
+          <div class="app-icon" data-tip="Ansible · Automation">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/ansible/ansible-original.svg" alt="Ansible"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🤖</span>'">
+            </div>
+            <span class="icon-label">Ansible</span>
+          </div>
+
+          <div class="app-icon" data-tip="Python · Scripting">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg"
+                   alt="Python"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🐍</span>'">
+            </div>
+            <span class="icon-label">Python</span>
+          </div>
+
+          <div class="app-icon" data-tip="Bash · Shell Scripts">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/gnubash/4EAA25" alt="Bash"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>💲</span>'">
+            </div>
+            <span class="icon-label">Bash</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ─── SYNOLOGY NAS ──────────────────────────────────────────────── -->
+      <div class="end-col">
+        <div class="device-card dc-teal" style="width:100%">
+          <div class="device-icon-wrap">
+            <div class="status-dot"></div>
+            <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="56" height="56" rx="14" fill="#061512"/>
+              <rect x="6" y="6" width="44" height="44" rx="5" stroke="#2DD4BF" stroke-width="1.8"/>
+              <rect x="12" y="14" width="18" height="5" rx="2" fill="#2DD4BF" opacity="0.7"/>
+              <rect x="12" y="22" width="18" height="5" rx="2" fill="#2DD4BF" opacity="0.55"/>
+              <rect x="12" y="30" width="18" height="5" rx="2" fill="#2DD4BF" opacity="0.4"/>
+              <circle cx="39" cy="16.5" r="3" fill="#68D391"/>
+              <circle cx="39" cy="24.5" r="3" fill="#68D391"/>
+              <circle cx="39" cy="32.5" r="3" fill="#F6AD55"/>
+              <rect x="8" y="38" width="40" height="12" rx="3" fill="#2DD4BF" opacity="0.12"/>
+              <circle cx="18" cy="44" r="3" fill="#2DD4BF" opacity="0.6"/>
+              <circle cx="28" cy="44" r="3" fill="#2DD4BF" opacity="0.6"/>
+              <circle cx="38" cy="44" r="3" fill="#2DD4BF" opacity="0.4"/>
+            </svg>
+          </div>
+          <div class="device-meta">
+            <div class="device-name">Synology NAS</div>
+            <div class="device-ip">192.168.10.10</div>
+            <span class="device-vlan" style="background:rgba(45,212,191,0.1);color:#2DD4BF;border:1px solid rgba(45,212,191,0.25)">VLAN 10 · Home</span>
+          </div>
+        </div>
+
+        <!-- 3 apps in 1 row -->
+        <div class="icon-grid" style="max-width:380px">
+
+          <div class="app-icon" data-tip="Synology DSM · Operating System">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/synology/B5B5B6" alt="Synology DSM"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🖥️</span>'">
+            </div>
+            <span class="icon-label">DSM</span>
+          </div>
+
+          <div class="app-icon" data-tip="Active Backup · Backup Station">
+            <div class="icon-box">
+              <!-- Backup: circular arrows SVG -->
+              <svg viewBox="0 0 58 58" fill="none" width="58" height="58">
+                <rect width="58" height="58" rx="12" fill="#002820"/>
+                <path d="M42 16 A16 16 0 1 1 16 29" stroke="#00C875" stroke-width="4" stroke-linecap="round" fill="none"/>
+                <polygon points="40,9 46,17 34,19" fill="#00C875"/>
+                <line x1="29" y1="20" x2="29" y2="37" stroke="#00C875" stroke-width="3.5" stroke-linecap="round"/>
+                <polyline points="21,30 29,38 37,30" stroke="#00C875" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span class="icon-label">Backup</span>
+          </div>
+
+          <div class="app-icon" data-tip="Plex · Media Server">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/plex.png" alt="Plex"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🎬</span>'">
+            </div>
+            <span class="icon-label">Plex</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ─── ESXi / HYPER-V ────────────────────────────────────────────── -->
+      <div class="end-col">
+        <div class="device-card dc-amber" style="width:100%">
+          <div class="device-icon-wrap">
+            <div class="status-dot"></div>
+            <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="56" height="56" rx="14" fill="#140e00"/>
+              <rect x="5" y="10" width="46" height="11" rx="3" stroke="#FBD34D" stroke-width="1.6"/>
+              <rect x="5" y="24" width="46" height="11" rx="3" stroke="#FBD34D" stroke-width="1.6"/>
+              <rect x="5" y="38" width="46" height="10" rx="3" stroke="#FBD34D" stroke-width="1.6"/>
+              <circle cx="44" cy="15.5" r="2.5" fill="#68D391"/>
+              <circle cx="44" cy="29.5" r="2.5" fill="#68D391"/>
+              <circle cx="44" cy="43"   r="2.5" fill="#F6AD55"/>
+              <line x1="10" y1="15.5" x2="36" y2="15.5" stroke="#FBD34D" stroke-width="1.2" opacity="0.5"/>
+              <line x1="10" y1="29.5" x2="36" y2="29.5" stroke="#FBD34D" stroke-width="1.2" opacity="0.5"/>
+            </svg>
+          </div>
+          <div class="device-meta">
+            <div class="device-name">ESXi / Hyper-V</div>
+            <div class="device-ip">192.168.100.254</div>
+            <span class="device-vlan" style="background:rgba(251,191,36,0.1);color:#FBD34D;border:1px solid rgba(251,191,36,0.25)">VLAN 100 · Office</span>
+          </div>
+        </div>
+
+        <!-- 9 apps: 3 per row = 3 clean rows -->
+        <div class="icon-grid" style="max-width:360px">
+
+          <div class="app-icon" data-tip="VMware ESXi · Hypervisor">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/vmware/607080" alt="ESXi"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>⚡</span>'">
+            </div>
+            <span class="icon-label">ESXi</span>
+          </div>
+
+          <div class="app-icon" data-tip="Proxmox VE · Hypervisor">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/proxmox/proxmox-original.svg" alt="Proxmox"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🔶</span>'">
+            </div>
+            <span class="icon-label">Proxmox</span>
+          </div>
+
+          <div class="app-icon" data-tip="Kubernetes · Orchestration">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-plain.svg" alt="K8s"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>☸️</span>'">
+            </div>
+            <span class="icon-label">Kubernetes</span>
+          </div>
+
+          <div class="app-icon" data-tip="Helm · K8s Package Manager">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/helm/helm-original.svg" alt="Helm"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>⎈</span>'">
+            </div>
+            <span class="icon-label">Helm</span>
+          </div>
+
+          <div class="app-icon" data-tip="Grafana Loki · Log Aggregation">
+            <div class="icon-box">
+              <img src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/loki.png" alt="Loki"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>📜</span>'">
+            </div>
+            <span class="icon-label">Loki</span>
+          </div>
+
+          <div class="app-icon" data-tip="PostgreSQL · Database">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/postgresql/336791" alt="PostgreSQL"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🐘</span>'">
+            </div>
+            <span class="icon-label">PostgreSQL</span>
+          </div>
+
+          <div class="app-icon" data-tip="Game Server VM">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/steam/C2C2C2" alt="Game Server"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🎮</span>'">
+            </div>
+            <span class="icon-label">Game Server</span>
+          </div>
+
+          <div class="app-icon" data-tip="Git · Version Control">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/git/F05032" alt="Git"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🔀</span>'">
+            </div>
+            <span class="icon-label">Git</span>
+          </div>
+
+          <div class="app-icon" data-tip="CI/CD · GitHub Actions Pipeline">
+            <div class="icon-box">
+              <img src="https://cdn.simpleicons.org/githubactions/2088FF" alt="CI/CD"
+                   onerror="this.parentNode.innerHTML='<span class=icon-emoji>🚀</span>'">
+            </div>
+            <span class="icon-label">CI/CD</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /.end-devices -->
+
+    <!-- Connector down to Zigbee -->
+    <div class="connector" style="margin-top:16px">
+      <div class="connector-line dashed" style="height:40px"></div>
+      <div class="connector-label">VLAN 200 · PoE / IoT</div>
+      <div class="connector-dot"></div>
+      <div class="connector-line dashed" style="height:40px"></div>
+    </div>
+
+    <!-- ─── ZIGBEE GATEWAY ─────────────────────────────────────────────── -->
+    <div class="device-block">
+      <div class="device-card dc-orange">
+        <div class="device-icon-wrap">
+          <div class="status-dot"></div>
+          <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="56" height="56" rx="14" fill="#120800"/>
+            <circle cx="28" cy="28" r="16" stroke="#FB923C" stroke-width="2"/>
+            <path d="M18 18 L38 18 L22 28 L38 38 L18 38" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="device-meta">
+          <div class="device-name">Zigbee Gateway</div>
+          <div class="device-ip">192.168.200.252</div>
+          <span class="device-vlan" style="background:rgba(251,146,60,0.1);color:#FB923C;border:1px solid rgba(251,146,60,0.25)">VLAN 200 · PoE/IoT</span>
+        </div>
+      </div>
+
+      <!-- 2 apps -->
+      <div class="icon-grid" style="max-width:270px">
+
+        <div class="app-icon" data-tip="Zigbee · IEEE 802.15.4 Protocol">
+          <div class="icon-box">
+            <img src="https://cdn.simpleicons.org/zigbee/EB5E00" alt="Zigbee"
+                 onerror="this.parentNode.innerHTML='<span class=icon-emoji>📡</span>'">
+          </div>
+          <span class="icon-label">Zigbee</span>
+        </div>
+
+        <div class="app-icon" data-tip="Home Assistant · Smart Home">
+          <div class="icon-box">
+            <img src="https://cdn.simpleicons.org/homeassistant/18BCF2" alt="IoT / Home Assistant"
+                 onerror="this.parentNode.innerHTML='<span class=icon-emoji>🏠</span>'">
+          </div>
+          <span class="icon-label">Home Asst.</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /.flow -->
+
+  <footer>
+    MikroTik Personal Network &nbsp;·&nbsp; Router 192.168.88.1 &nbsp;·&nbsp; Switch 192.168.88.2
+    &nbsp;·&nbsp; WireGuard VPN 192.168.220.0/24 &nbsp;·&nbsp; Hover any icon to identify
+  </footer>
+
+</div><!-- /.page -->
+
+</body>
+</html>

@@ -1,0 +1,18 @@
+Kubernetes:
+
+apps.karatemilo.com
+argocd.karatemilo.com
+test.karatemilo.com
+
+        |
+        v
+
+MetalLB
+        |
+        v
+
+NGINX Ingress Controller
+        |
+        v
+
+Kubernetes services
